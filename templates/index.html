@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Math Fun Practice</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header>
+        <h1>Math Fun Practice</h1>
+        <p>Generate a focused practice session in minutes.</p>
+      </header>
+
+      <section id="screen-setup" class="screen active">
+        <h2>Start a Session</h2>
+        <form id="setup-form">
+          <label>
+            Grade
+            <input type="number" min="1" max="12" name="grade" value="5" required />
+          </label>
+          <label>
+            Topic
+            <select name="topic" required>
+              <option value="algebra">Algebra</option>
+              <option value="fractions">Fractions</option>
+              <option value="geometry">Geometry</option>
+              <option value="word problems">Word Problems</option>
+            </select>
+          </label>
+          <label>
+            Difficulty (optional)
+            <select name="difficulty">
+              <option value="">Auto</option>
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+          <button type="submit">Generate Questions</button>
+        </form>
+        <div id="setup-message" class="hint"></div>
+      </section>
+
+      <section id="screen-questions" class="screen">
+        <h2>Answer the Questions</h2>
+        <form id="questions-form">
+          <div id="question-list"></div>
+          <button type="submit">Submit Answers</button>
+        </form>
+      </section>
+
+      <section id="screen-results" class="screen">
+        <h2>Your Results</h2>
+        <div class="results-card">
+          <p id="score-text"></p>
+          <p id="feedback-text"></p>
+          <p id="weakness-text"></p>
+        </div>
+        <div id="answer-review"></div>
+        <button id="restart">Start New Session</button>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
