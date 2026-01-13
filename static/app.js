@@ -7,7 +7,9 @@ const restartButton = document.getElementById("restart");
 const scoreText = document.getElementById("score-text");
 const feedbackText = document.getElementById("feedback-text");
 const weaknessText = document.getElementById("weakness-text");
+const skillsText = document.getElementById("skills-text");
 const answerReview = document.getElementById("answer-review");
+const incorrectReview = document.getElementById("incorrect-review");
 
 let currentSession = null;
 
@@ -93,7 +95,16 @@ questionsForm.addEventListener("submit", async (event) => {
 
   scoreText.textContent = `Score: ${submitData.score}%`;
   feedbackText.textContent = submitData.feedback;
-  weaknessText.textContent = analysisData.weakness_summary;
+  weaknessText.textContent = analysisData.feedback;
+
+  if (analysisData.lowest_accuracy_skills?.length) {
+    const skillsLabel = analysisData.lowest_accuracy_skills
+      .map((skill) => `${skill.skills_tag} (${skill.accuracy}%)`)
+      .join(", ");
+    skillsText.textContent = `Lowest accuracy: ${skillsLabel}`;
+  } else {
+    skillsText.textContent = "";
+  }
 
   answerReview.innerHTML = "";
   submitData.correctness.forEach((result, index) => {
@@ -108,6 +119,24 @@ questionsForm.addEventListener("submit", async (event) => {
     `;
     answerReview.appendChild(row);
   });
+
+  incorrectReview.innerHTML = "";
+  if (analysisData.incorrect_answers?.length) {
+    const title = document.createElement("h3");
+    title.textContent = "Review Incorrect Answers";
+    incorrectReview.appendChild(title);
+
+    analysisData.incorrect_answers.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "review-row";
+      row.innerHTML = `
+        <strong>${entry.prompt}</strong>
+        <span class="incorrect">Your answer: ${entry.student_answer || "—"}</span>
+        <span class="expected">Correct: ${entry.correct_answer}</span>
+      `;
+      incorrectReview.appendChild(row);
+    });
+  }
 
   showScreen("screen-results");
 });

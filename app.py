@@ -255,20 +255,82 @@ def analyze_session() -> Any:
     if not session:
         return jsonify({"error": "Session not found"}), 404
 
-    incorrect_categories: dict[str, int] = {}
-    for question, answer in zip(session.questions, session.student_answers):
-        if not answers_match(question.answer, str(answer)):
-            incorrect_categories[question.category] = (
-                incorrect_categories.get(question.category, 0) + 1
+    skill_totals: dict[str, dict[str, int]] = {}
+    incorrect_answers: list[dict[str, str]] = []
+    student_answers = session.student_answers or []
+
+    for index, question in enumerate(session.questions):
+        given_answer = ""
+        if index < len(student_answers):
+            given_answer = str(student_answers[index])
+        is_correct = answers_match(question.answer, given_answer)
+
+        stats = skill_totals.setdefault(
+            question.category, {"total": 0, "correct": 0, "incorrect": 0}
+        )
+        stats["total"] += 1
+        if is_correct:
+            stats["correct"] += 1
+        else:
+            stats["incorrect"] += 1
+            incorrect_answers.append(
+                {
+                    "question_id": question.id,
+                    "prompt": question.prompt,
+                    "skills_tag": question.category,
+                    "correct_answer": question.answer,
+                    "student_answer": given_answer,
+                }
             )
 
-    if not incorrect_categories:
-        summary = "No major weaknesses detected. Keep challenging yourself!"
-    else:
-        focus = max(incorrect_categories, key=incorrect_categories.get)
-        summary = f"Struggled with {focus.replace('_', ' ')} questions."
+    errors_by_skill: dict[str, dict[str, float]] = {}
+    for skill, stats in skill_totals.items():
+        total = stats["total"]
+        correct = stats["correct"]
+        accuracy = round((correct / total) * 100, 1) if total else 0.0
+        errors_by_skill[skill] = {
+            "total": total,
+            "incorrect": stats["incorrect"],
+            "accuracy": accuracy,
+        }
 
-    return jsonify({"session_id": session.id, "weakness_summary": summary})
+    sorted_skills = sorted(
+        errors_by_skill.items(),
+        key=lambda item: (item[1]["accuracy"], -item[1]["total"]),
+    )
+    lowest_accuracy_skills = [
+        {"skills_tag": skill, "accuracy": metrics["accuracy"]}
+        for skill, metrics in sorted_skills[:2]
+    ]
+
+    skill_labels = {
+        "equations": "multi-step equations",
+        "fractions": "fraction operations",
+        "division": "division word problems",
+        "geometry": "area and geometry",
+        "arithmetic": "arithmetic fluency",
+    }
+    focus_labels = [
+        skill_labels.get(entry["skills_tag"], entry["skills_tag"].replace("_", " "))
+        for entry in lowest_accuracy_skills
+    ]
+    if focus_labels:
+        if len(focus_labels) == 1:
+            feedback = f"Focus on {focus_labels[0]}."
+        else:
+            feedback = f"Focus on {focus_labels[0]} and {focus_labels[1]}."
+    else:
+        feedback = "Keep challenging yourself."
+
+    return jsonify(
+        {
+            "session_id": session.id,
+            "incorrect_answers": incorrect_answers,
+            "errors_by_skill": errors_by_skill,
+            "lowest_accuracy_skills": lowest_accuracy_skills,
+            "feedback": feedback,
+        }
+    )
 
 
 if __name__ == "__main__":
