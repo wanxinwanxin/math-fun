@@ -263,17 +263,29 @@ def normalize_answer(answer: str) -> str:
     return answer.strip().lower()
 
 
+def _looks_like_decimal(value: str) -> bool:
+    return any(char in value for char in (".", "e", "E"))
+
+
 def answers_match(expected: str, given: str) -> bool:
-    if not given:
+    if given is None:
         return False
-    expected_norm = normalize_answer(expected)
-    given_norm = normalize_answer(given)
+    expected_raw = str(expected).strip()
+    given_raw = str(given).strip()
+    if not given_raw:
+        return False
     try:
-        expected_value = float(expected_norm)
-        given_value = float(given_norm)
+        expected_value = float(expected_raw)
+        given_value = float(given_raw)
     except ValueError:
+        expected_norm = normalize_answer(expected_raw)
+        given_norm = normalize_answer(given_raw)
+        if expected_raw in {"A", "B", "C", "D", "E"}:
+            return expected_raw == given_raw
         return expected_norm == given_norm
-    return math.isclose(expected_value, given_value, rel_tol=0.02, abs_tol=0.02)
+    if _looks_like_decimal(expected_raw) or _looks_like_decimal(given_raw):
+        return math.isclose(expected_value, given_value, rel_tol=0.0, abs_tol=0.01)
+    return expected_value == given_value
 
 
 @app.route("/api/sessions", methods=["POST"])
