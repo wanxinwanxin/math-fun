@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import math
+import os
 import random
 import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request
+from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -169,6 +171,54 @@ def generate_questions(grade: int, topic: str, difficulty: str) -> list[Question
     return questions
 
 
+def build_weakness_summary(session: PracticeSession) -> str:
+    incorrect_categories: dict[str, int] = {}
+    for question, answer in zip(session.questions, session.student_answers):
+        if not answers_match(question.answer, str(answer)):
+            incorrect_categories[question.category] = (
+                incorrect_categories.get(question.category, 0) + 1
+            )
+
+    if not incorrect_categories:
+        return "No major weaknesses detected. Keep challenging yourself!"
+
+    focus = max(incorrect_categories, key=incorrect_categories.get)
+    return f"Struggled with {focus.replace('_', ' ')} questions."
+
+
+def build_ai_feedback(session: PracticeSession, weakness_summary: str) -> str:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return "AI feedback unavailable. Add OPENAI_API_KEY to enable coach tips."
+
+    client = OpenAI(api_key=api_key)
+    prompt = (
+        "You are a friendly math tutor. Provide 3 short, actionable tips for the "
+        "student based on their session. Keep it under 80 words."
+    )
+    context = (
+        f"Grade: {session.grade}\n"
+        f"Topic: {session.topic}\n"
+        f"Difficulty: {session.difficulty}\n"
+        f"Score: {session.score}\n"
+        f"Weakness summary: {weakness_summary}\n"
+    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": context},
+            ],
+            max_tokens=120,
+            temperature=0.6,
+        )
+    except Exception:
+        return "AI feedback is temporarily unavailable. Try again later."
+
+    return response.choices[0].message.content.strip()
+
+
 def normalize_answer(answer: str) -> str:
     return answer.strip().lower()
 
@@ -255,20 +305,22 @@ def analyze_session() -> Any:
     if not session:
         return jsonify({"error": "Session not found"}), 404
 
-    incorrect_categories: dict[str, int] = {}
-    for question, answer in zip(session.questions, session.student_answers):
-        if not answers_match(question.answer, str(answer)):
-            incorrect_categories[question.category] = (
-                incorrect_categories.get(question.category, 0) + 1
-            )
-
-    if not incorrect_categories:
-        summary = "No major weaknesses detected. Keep challenging yourself!"
-    else:
-        focus = max(incorrect_categories, key=incorrect_categories.get)
-        summary = f"Struggled with {focus.replace('_', ' ')} questions."
+    summary = build_weakness_summary(session)
 
     return jsonify({"session_id": session.id, "weakness_summary": summary})
+
+
+@app.route("/api/ai-feedback", methods=["POST"])
+def ai_feedback() -> Any:
+    payload = request.get_json(force=True)
+    session_id = payload.get("session_id")
+    session = SESSIONS.get(session_id)
+    if not session:
+        return jsonify({"error": "Session not found"}), 404
+
+    weakness_summary = build_weakness_summary(session)
+    feedback = build_ai_feedback(session, weakness_summary)
+    return jsonify({"session_id": session.id, "ai_feedback": feedback})
 
 
 if __name__ == "__main__":

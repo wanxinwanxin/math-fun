@@ -8,6 +8,7 @@ const scoreText = document.getElementById("score-text");
 const feedbackText = document.getElementById("feedback-text");
 const weaknessText = document.getElementById("weakness-text");
 const answerReview = document.getElementById("answer-review");
+const aiFeedbackText = document.getElementById("ai-feedback-text");
 
 let currentSession = null;
 
@@ -94,6 +95,22 @@ questionsForm.addEventListener("submit", async (event) => {
   scoreText.textContent = `Score: ${submitData.score}%`;
   feedbackText.textContent = submitData.feedback;
   weaknessText.textContent = analysisData.weakness_summary;
+  aiFeedbackText.textContent = "Generating AI tips...";
+
+  try {
+    const aiResponse = await fetch("/api/ai-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: currentSession.id }),
+    });
+    const aiData = await aiResponse.json();
+    if (!aiResponse.ok) {
+      throw new Error(aiData.error || "Unable to load AI tips.");
+    }
+    aiFeedbackText.textContent = aiData.ai_feedback;
+  } catch (error) {
+    aiFeedbackText.textContent = error.message;
+  }
 
   answerReview.innerHTML = "";
   submitData.correctness.forEach((result, index) => {
@@ -116,5 +133,6 @@ restartButton.addEventListener("click", () => {
   currentSession = null;
   setupForm.reset();
   setupMessage.textContent = "";
+  aiFeedbackText.textContent = "";
   showScreen("screen-setup");
 });
