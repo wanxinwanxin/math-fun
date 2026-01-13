@@ -24,7 +24,7 @@ function buildQuestions(questions) {
     wrapper.className = "question";
 
     const prompt = document.createElement("p");
-    prompt.textContent = `${index + 1}. ${question.prompt}`;
+    prompt.textContent = `${index + 1}. ${question.question_text}`;
 
     const input = document.createElement("input");
     input.type = "text";
