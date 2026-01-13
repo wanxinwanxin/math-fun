@@ -7,7 +7,10 @@ const restartButton = document.getElementById("restart");
 const scoreText = document.getElementById("score-text");
 const feedbackText = document.getElementById("feedback-text");
 const weaknessText = document.getElementById("weakness-text");
+const skillsText = document.getElementById("skills-text");
 const answerReview = document.getElementById("answer-review");
+const incorrectReview = document.getElementById("incorrect-review");
+const aiFeedbackText = document.getElementById("ai-feedback-text");
 
 let currentSession = null;
 
@@ -24,7 +27,7 @@ function buildQuestions(questions) {
     wrapper.className = "question";
 
     const prompt = document.createElement("p");
-    prompt.textContent = `${index + 1}. ${question.question_text}`;
+    prompt.textContent = `${index + 1}. ${question.prompt}`;
 
     const input = document.createElement("input");
     input.type = "text";
@@ -93,7 +96,33 @@ questionsForm.addEventListener("submit", async (event) => {
 
   scoreText.textContent = `Score: ${submitData.score}%`;
   feedbackText.textContent = submitData.feedback;
-  weaknessText.textContent = analysisData.weakness_summary;
+  weaknessText.textContent = analysisData.feedback;
+
+  if (analysisData.lowest_accuracy_skills?.length) {
+    const skillsLabel = analysisData.lowest_accuracy_skills
+      .map((skill) => `${skill.skills_tag} (${skill.accuracy}%)`)
+      .join(", ");
+    skillsText.textContent = `Lowest accuracy: ${skillsLabel}`;
+  } else {
+    skillsText.textContent = "";
+  }
+
+  aiFeedbackText.textContent = "Generating AI tips...";
+
+  try {
+    const aiResponse = await fetch("/api/ai-feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: currentSession.id }),
+    });
+    const aiData = await aiResponse.json();
+    if (!aiResponse.ok) {
+      throw new Error(aiData.error || "Unable to load AI tips.");
+    }
+    aiFeedbackText.textContent = aiData.ai_feedback;
+  } catch (error) {
+    aiFeedbackText.textContent = error.message;
+  }
 
   answerReview.innerHTML = "";
   submitData.correctness.forEach((result, index) => {
@@ -109,6 +138,34 @@ questionsForm.addEventListener("submit", async (event) => {
     answerReview.appendChild(row);
   });
 
+  incorrectReview.innerHTML = "";
+  if (analysisData.incorrect_answers?.length) {
+    const title = document.createElement("h3");
+    title.textContent = "Review Incorrect Answers";
+    incorrectReview.appendChild(title);
+
+    analysisData.incorrect_answers.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "review-row";
+
+      const promptElement = document.createElement("strong");
+      promptElement.textContent = entry.prompt;
+
+      const studentAnswerSpan = document.createElement("span");
+      studentAnswerSpan.className = "incorrect";
+      studentAnswerSpan.textContent = `Your answer: ${entry.student_answer || "—"}`;
+
+      const correctAnswerSpan = document.createElement("span");
+      correctAnswerSpan.className = "expected";
+      correctAnswerSpan.textContent = `Correct: ${entry.correct_answer}`;
+
+      row.appendChild(promptElement);
+      row.appendChild(studentAnswerSpan);
+      row.appendChild(correctAnswerSpan);
+      incorrectReview.appendChild(row);
+    });
+  }
+
   showScreen("screen-results");
 });
 
@@ -116,5 +173,6 @@ restartButton.addEventListener("click", () => {
   currentSession = null;
   setupForm.reset();
   setupMessage.textContent = "";
+  aiFeedbackText.textContent = "";
   showScreen("screen-setup");
 });

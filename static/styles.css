@@ -89,6 +89,18 @@ button:hover {
   margin-bottom: 16px;
 }
 
+.ai-card {
+  padding: 16px;
+  background: #fff8e6;
+  border-radius: 12px;
+  border: 1px solid #f0d9a8;
+  margin-bottom: 16px;
+}
+
+.ai-card h3 {
+  margin-top: 0;
+}
+
 .review-row {
   display: grid;
   gap: 6px;
@@ -109,4 +121,9 @@ button:hover {
 .expected {
   color: #5b657a;
   font-size: 14px;
+}
+
+.muted {
+  color: #56637d;
+  margin: 0;
 }
