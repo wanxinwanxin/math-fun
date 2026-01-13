@@ -288,10 +288,13 @@ def create_session() -> Any:
             grade, topic, num_questions=10
         )
     except (requests.RequestException, ValueError, RuntimeError) as error:
-        return (
-            jsonify({"error": f"Unable to generate questions: {error}"}),
-            502,
+        questions = generate_questions_local(grade, topic, difficulty)
+        raw_questions_json = json.dumps([asdict(question) for question in questions])
+        response_message = (
+            "Session generated using local questions because the model was unavailable."
         )
+    else:
+        response_message = "Session generated using a structured model prompt."
     session = PracticeSession(
         id=str(uuid.uuid4()),
         grade=grade,
@@ -303,7 +306,7 @@ def create_session() -> Any:
     )
     SESSIONS[session.id] = session
     response = session.to_public_dict()
-    response["message"] = "Session generated using a structured model prompt."
+    response["message"] = response_message
     return jsonify(response)
 
 
