@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 import random
 import uuid
 from dataclasses import asdict, dataclass, field
@@ -215,7 +216,6 @@ def build_weakness_summary(session: PracticeSession) -> str:
 
 
 def build_ai_feedback(session: PracticeSession, weakness_summary: str) -> str:
-    import os
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         return "AI feedback unavailable. Add OPENAI_API_KEY to enable coach tips."
