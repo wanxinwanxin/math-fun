@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+tests/node_modules/
 
 # Build outputs
 dist/
@@ -9,6 +10,7 @@ build/
 .env
 .env.local
 config.json
+.mcp.json
 
 # OS files
 .DS_Store
@@ -20,3 +22,12 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Test artifacts
+tests/screenshots/*.png
+!tests/screenshots/.gitkeep

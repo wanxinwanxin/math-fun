@@ -93,13 +93,45 @@ def generate_fraction_question(difficulty: str) -> Question:
     )
 
 
-def generate_word_problem(difficulty: str) -> Question:
+def generate_word_problem_narrative(
+    total: int, groups: int, difficulty: str, grade: int
+) -> str:
+    """Generate a varied narrative for division word problems using AI.
+
+    Falls back to a default template if OpenAI API is unavailable.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        # Fallback to original template
+        return f"A teacher has {total} markers and shares them evenly among {groups} tables. How many markers does each table get?"
+
+    try:
+        client = OpenAI(api_key=api_key)
+        prompt = f"""Generate a brief division word problem for grade {grade} students.
+Requirements:
+- Use exactly these numbers: {total} items divided into {groups} equal groups
+- Create a realistic, age-appropriate scenario
+- Use varied contexts (food, school supplies, toys, sports, nature, etc.)
+- Keep it under 25 words
+- End with a clear question asking how many per group
+- Do NOT solve it or include the answer"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=80,
+            temperature=0.8,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        # Fallback on any error
+        return f"A teacher has {total} markers and shares them evenly among {groups} tables. How many markers does each table get?"
+
+
+def generate_word_problem(difficulty: str, grade: int = 5) -> Question:
     total = random.randint(24, 60)
     groups = random.randint(3, 6) if difficulty != "hard" else random.randint(5, 8)
-    prompt = (
-        f"A teacher has {total} markers and shares them evenly among {groups} tables. "
-        "How many markers does each table get?"
-    )
+    prompt = generate_word_problem_narrative(total, groups, difficulty, grade)
     answer = str(total // groups)
     return Question(
         id=str(uuid.uuid4()),
@@ -167,7 +199,10 @@ def generate_questions(grade: int, topic: str, difficulty: str) -> list[Question
     questions = []
     for _ in range(target_count):
         generator = random.choice(generators)
-        questions.append(generator(difficulty))
+        if generator == generate_word_problem:
+            questions.append(generator(difficulty, grade))
+        else:
+            questions.append(generator(difficulty))
     return questions
 
 
